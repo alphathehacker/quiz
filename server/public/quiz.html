@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Take Quiz</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+  <div class="max-w-3xl mx-auto">
+    <h2 class="text-2xl font-bold text-center text-indigo-700 mb-6">Take Quiz</h2>
+    <form id="quiz-form" class="space-y-6">
+      <div id="questions-area"></div>
+      <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Submit Quiz</button>
+    </form>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem("user"));
+    let quizTitle = "";
+
+    fetch('/api/quiz')
+      .then(res => res.json())
+      .then(data => {
+        const latestQuiz = data[data.length - 1];
+        quizTitle = latestQuiz.title;
+        const container = document.getElementById('questions-area');
+        latestQuiz.questions.forEach((q, idx) => {
+          const block = document.createElement('div');
+          block.classList.add("bg-white", "p-4", "rounded-lg", "shadow");
+
+          let html = `<p class="font-semibold">${idx + 1}. ${q.question}</p>`;
+
+          if (q.questionType === 'MCQ') {
+            q.options.forEach(opt => {
+              html += `
+                <label class="block mt-2">
+                  <input type="radio" name="q${idx}" value="${opt}" required />
+                  ${opt}
+                </label>`;
+            });
+          } else if (q.questionType === 'Multiple Answer') {
+            q.options.forEach(opt => {
+              html += `
+                <label class="block mt-2">
+                  <input type="checkbox" name="q${idx}" value="${opt}" />
+                  ${opt}
+                </label>`;
+            });
+          } else if (q.questionType === 'Fill in the Blank') {
+            html += `<input type="text" name="q${idx}" required class="border p-1 mt-2 w-full rounded" />`;
+          }
+
+          block.innerHTML = html;
+          container.appendChild(block);
+        });
+      });
+
+    document.getElementById('quiz-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const form = e.target;
+      const inputs = new FormData(form);
+      const answers = [];
+
+      const totalQuestions = form.querySelectorAll('div').length;
+      for (let i = 0; i < totalQuestions; i++) {
+        const qName = `q${i}`;
+        const all = inputs.getAll(qName);
+        answers.push(all.length === 1 ? all[0] : all);
+      }
+
+      fetch('/api/submit-quiz', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email,
+          quizName: quizTitle,
+          answers: answers
+        })
+      })
+      .then(res => res.json())
+      .then(result => {
+        alert(`Quiz Submitted! Score: ${result.score}/${result.total}`);
+        window.location.href = "/results.html";
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Results</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+  <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+    <h1 class="text-2xl font-bold text-blue-700 mb-4 text-center">Quiz Results</h1>
+    <div id="results" class="space-y-4"></div>
+    <div class="text-center mt-6">
+      <button onclick="goBack()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">Back</button>
+    </div>
+  </div>
+
+  <script>
+    function goBack() {
+      const role = JSON.parse(localStorage.getItem("user")).role;
+      if (role === 'faculty') {
+        window.location.href = "/dashboard_faculty.html";
+      } else {
+        window.location.href = "/dashboard_student.html";
+      }
+    }
+
+    const user = JSON.parse(localStorage.getItem("user"));
+
+    fetch("/api/results/student", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: user.email })
+    })
+    .then(res => res.json())
+    .then(data => {
+      const resultsDiv = document.getElementById("results");
+      if (!data.results || data.results.length === 0) {
+        resultsDiv.innerHTML = "<p class='text-red-500'>No results found.</p>";
+        return;
+      }
+
+      data.results.forEach(r => {
+        resultsDiv.innerHTML += `
+          <div class="border rounded p-4 bg-gray-50 shadow">
+            <p class="text-lg font-semibold text-gray-800">Quiz: ${r.quizName}</p>
+            <p class="mt-1 text-green-700 font-medium">Score: ${r.score} / ${r.total}</p>
+          </div>
+        `;
+      });
+    })
+    .catch(err => {
+      document.getElementById("results").innerHTML = `<p class="text-red-500">Error loading results.</p>`;
+    });
+  </script>
+</body>
+</html>

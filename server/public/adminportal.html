@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Portal - Quiz Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+
+  <div class="max-w-5xl mx-auto">
+    <h1 class="text-3xl font-bold text-center text-indigo-700 mb-8">Admin Quiz Management Portal</h1>
+
+    <!-- Add Quiz Form -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-10">
+      <h2 class="text-xl font-semibold mb-4 text-indigo-600">Add New Quiz</h2>
+      <form id="quizForm" class="space-y-4">
+        <input type="text" id="title" placeholder="Quiz Title" class="w-full border px-4 py-2 rounded" required />
+
+        <div id="questionList" class="space-y-4"></div>
+
+        <button type="button" onclick="addQuestion()" class="bg-green-500 text-white px-4 py-2 rounded">Add Question</button>
+        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded">Submit Quiz</button>
+      </form>
+    </div>
+
+    <!-- View Quizzes -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h2 class="text-xl font-semibold mb-4 text-indigo-600">All Quizzes</h2>
+      <button onclick="fetchQuizzes()" class="bg-indigo-500 text-white px-4 py-2 rounded mb-4">Refresh List</button>
+      <div id="quizList" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <script>
+    let questionCount = 0;
+
+    function addQuestion() {
+      const questionHTML = `
+        <div class="border rounded p-4 bg-gray-50 space-y-2" id="question-${questionCount}">
+          <input type="text" placeholder="Question" name="question-${questionCount}" class="w-full border px-2 py-1 rounded" required />
+          <select name="type-${questionCount}" class="border rounded px-2 py-1 w-full">
+            <option value="">Select Type</option>
+            <option value="mcq">Multiple Choice</option>
+            <option value="multi">Multiple Answer</option>
+            <option value="blank">Fill in the Blank</option>
+          </select>
+          <input type="text" placeholder="Options (comma-separated)" name="options-${questionCount}" class="w-full border px-2 py-1 rounded" />
+          <input type="text" placeholder="Correct Answer(s)" name="answer-${questionCount}" class="w-full border px-2 py-1 rounded" required />
+          <button type="button" onclick="removeQuestion(${questionCount})" class="text-red-500 text-sm">Remove</button>
+        </div>
+      `;
+      const container = document.getElementById("questionList");
+      container.insertAdjacentHTML('beforeend', questionHTML);
+      questionCount++;
+    }
+
+    function removeQuestion(index) {
+      const questionDiv = document.getElementById(`question-${index}`);
+      if (questionDiv) questionDiv.remove();
+    }
+
+    document.getElementById("quizForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const title = document.getElementById("title").value.trim();
+      const questions = [];
+
+      for (let i = 0; i < questionCount; i++) {
+        const q = document.querySelector(`[name="question-${i}"]`);
+        const t = document.querySelector(`[name="type-${i}"]`);
+        const o = document.querySelector(`[name="options-${i}"]`);
+        const a = document.querySelector(`[name="answer-${i}"]`);
+
+        if (q && t && a) {
+          questions.push({
+            questionText: q.value,
+            questionType: t.value,
+            options: o?.value ? o.value.split(',').map(opt => opt.trim()) : [],
+            correctAnswer: t.value === 'multi' ? a.value.split(',').map(ans => ans.trim()) : a.value.trim()
+          });
+        }
+      }
+
+      const response = await fetch('/api/quiz/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, questions })
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        alert("Quiz added successfully!");
+        document.getElementById("quizForm").reset();
+        document.getElementById("questionList").innerHTML = '';
+        questionCount = 0;
+        fetchQuizzes();
+      } else {
+        alert("Failed to add quiz:\n" + result.details);
+      }
+    });
+
+    async function fetchQuizzes() {
+      const res = await fetch('/api/quiz');
+      const data = await res.json();
+      const quizList = document.getElementById("quizList");
+      quizList.innerHTML = '';
+
+      data.forEach(q => {
+        quizList.innerHTML += `
+          <div class="border p-4 rounded shadow bg-white">
+            <h3 class="font-semibold text-lg text-gray-700">${q.title}</h3>
+            <button onclick="deleteQuiz('${q._id}')" class="bg-red-500 text-white px-3 py-1 rounded mt-2">Delete</button>
+          </div>
+        `;
+      });
+    }
+
+    async function deleteQuiz(id) {
+      if (!confirm("Are you sure you want to delete this quiz?")) return;
+      const res = await fetch(`/api/quiz/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) {
+        alert("Quiz deleted successfully");
+        fetchQuizzes();
+      } else {
+        alert("Failed to delete quiz");
+      }
+    }
+
+    fetchQuizzes();
+  </script>
+</body>
+</html>

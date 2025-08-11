@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Student Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-blue-50 p-6 min-h-screen">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold text-center text-blue-700 mb-8">Welcome, Student</h1>
+
+    <!-- Quiz List Section -->
+    <section class="mb-10">
+      <h2 class="text-xl font-semibold mb-4 text-blue-600">Available Quizzes</h2>
+      <button onclick="loadQuizzes()" class="bg-blue-600 text-white px-4 py-2 rounded mb-4">Refresh Quizzes</button>
+      <div id="quizContainer" class="space-y-4"></div>
+    </section>
+
+    <!-- Results Section -->
+    <section>
+      <h2 class="text-xl font-semibold mb-4 text-green-600">Your Results</h2>
+      <button onclick="loadResults()" class="bg-green-600 text-white px-4 py-2 rounded mb-4">View Results</button>
+      <div id="resultContainer" class="space-y-4"></div>
+    </section>
+  </div>
+
+  <script>
+    async function loadQuizzes() {
+      const res = await fetch('/api/quiz');
+      const quizzes = await res.json();
+      const container = document.getElementById("quizContainer");
+      container.innerHTML = "";
+
+      quizzes.forEach(quiz => {
+        const card = document.createElement('div');
+        card.className = "bg-white shadow p-4 rounded";
+
+        card.innerHTML = `
+          <h3 class="text-lg font-bold text-gray-700">${quiz.title}</h3>
+          <button onclick="attemptQuiz('${quiz._id}')" class="bg-indigo-500 text-white px-4 py-1 rounded mt-2">Take Quiz</button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    async function attemptQuiz(quizId) {
+      localStorage.setItem("quizId", quizId);
+      window.location.href = "/quiz.html";
+    }
+
+    async function loadResults() {
+      const user = JSON.parse(localStorage.getItem("user"));
+      const res = await fetch('/api/results/student', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user?.email })
+      });
+
+      const data = await res.json();
+      const container = document.getElementById("resultContainer");
+      container.innerHTML = "";
+
+      if (data.results.length === 0) {
+        container.innerHTML = `<p class="text-red-600">No results available.</p>`;
+        return;
+      }
+
+      data.results.forEach(result => {
+        const div = document.createElement('div');
+        div.className = "bg-white p-4 shadow rounded";
+
+        div.innerHTML = `
+          <p class="font-semibold text-gray-700">Quiz: ${result.quizTitle}</p>
+          <p class="text-gray-600">Score: ${result.score} / ${result.total}</p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    loadQuizzes();
+  </script>
+</body>
+</html>
